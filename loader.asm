@@ -1,11 +1,6 @@
 SYSSEG equ 01000h
 SYSLEN equ 17
-org 07c00h
-jmp 07c0h:5
-    mov ax, cs
-    mov ds, ax
-    mov ss, ax
-    mov sp, 0400h
+jmp 07c0h:(load_system-$)
 load_system:
     mov dx, 00000h
     mov cx, 00002h

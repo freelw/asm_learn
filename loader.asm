@@ -1,3 +1,4 @@
+[BITS 16]
 SYSSEG equ 01000h
 SYSLEN equ 17
 jmp 07c0h:(load_system-$)

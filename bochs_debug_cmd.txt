@@ -13,3 +13,5 @@ b 0x7c00    boot开始处断点
 
 
 x /20cb 0x1f 查看字符串的值 20个字符 c代表字符 b代表byte， help x 获取更过查看内存的参数
+
+x /8xh 0x7c3f

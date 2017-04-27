@@ -1,6 +1,7 @@
 SYSSEG equ 01000h
 SYSLEN equ 17
 jmp 07c0h:(load_system-$)
+
 load_system:
     mov dx, 00000h
     mov cx, 00002h
@@ -11,6 +12,7 @@ load_system:
     int 013h
     jnc ok_load
     jmp $
+
 ok_load:
     cli
     ;jmp SYSSEG:0            ;读取完成之后跳转
@@ -21,10 +23,26 @@ ok_load:
     mov cx, 0x1000
     sub si, si
     sub di, di
-    cld
+    cld                     ;df = 0 rep movsw是正向的
     rep movsw
+    mov ax, 0x7c0          ;重新恢复ds指向0x7c0
+    mov ds, ax
+    lgdt [gdt_48]
     jmp 0:0
 gdt:
-    ;dw 0, 0, 0, 0
+    dw 0, 0, 0, 0           ;第一个描述符，没有用
+    dw 0x07ff               ;代码段 从0地址开始
+    dw 0x0000
+    dw 0x9a00
+    dw 0x00c0
+    dw 0x07ff               ;数据段 从0地址开始
+    dw 0x0000
+    dw 0x9200
+    dw 0x00c0
+gdt_48:
+    dw 0x7ff                ;2048/8=256个描述符
+    dw 0x7c00+gdt, 0        ;基地址是从0x7c00开始的gdt位置
+
+;----------注意！所有的有效语句要写在这之前，并且总长出小于等于510字节----------
     times 510 - ($-$$) db 0
     dw 0xaa55

@@ -12,6 +12,17 @@ load_system:
     jnc ok_load
     jmp $
 ok_load:
-    jmp 01000h:0            ;读取完成之后跳转
+    cli
+    ;jmp SYSSEG:0            ;读取完成之后跳转
+    mov ax, SYSSEG          ;开始把010000h位置的数据拷贝到0h处
+    mov ds, ax
+    xor ax, ax
+    mov es, ax
+    mov cx, 0x1000
+    sub si, si
+    sub di, di
+    cld
+    rep movsw
+    jmp 0:0
     times 510 - ($-$$) db 0
     dw 0xaa55

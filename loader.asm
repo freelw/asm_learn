@@ -15,7 +15,7 @@ ok_load:
     cli
     ;jmp SYSSEG:0            ;读取完成之后跳转
     mov ax, SYSSEG          ;开始把010000h位置的数据拷贝到0h处
-    mov ds, ax
+    mov ds, ax              ;注意这时bios的代码就会被冲掉，无法再使用int 10h
     xor ax, ax
     mov es, ax
     mov cx, 0x1000

@@ -24,5 +24,7 @@ ok_load:
     cld
     rep movsw
     jmp 0:0
+gdt:
+    ;dw 0, 0, 0, 0
     times 510 - ($-$$) db 0
     dw 0xaa55

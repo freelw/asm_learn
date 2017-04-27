@@ -1,4 +1,3 @@
-
     mov ax, 0b800h  ;初始化ds指向显存
     mov ds, ax
     xor ax, ax      ;初始化es指向0

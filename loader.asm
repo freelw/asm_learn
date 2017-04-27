@@ -28,7 +28,9 @@ ok_load:
     mov ax, 0x7c0          ;重新恢复ds指向0x7c0
     mov ds, ax
     lgdt [gdt_48]
-    jmp 0:0
+    mov ax, 0x0001
+    lmsw ax
+    jmp dword 8:0
 gdt:
     dw 0, 0, 0, 0           ;第一个描述符，没有用
     dw 0x07ff               ;代码段 从0地址开始
@@ -39,6 +41,7 @@ gdt:
     dw 0x0000
     dw 0x9200
     dw 0x00c0
+
 gdt_48:
     dw 0x7ff                ;2048/8=256个描述符
     dw 0x7c00+gdt, 0        ;基地址是从0x7c00开始的gdt位置

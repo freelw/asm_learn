@@ -16,7 +16,7 @@ load_system:
 
 ok_load:
     cli
-    ;jmp SYSSEG:0            ;读取完成之后跳转
+    ;jmp SYSSEG:0           ;读取完成之后跳转
     mov ax, SYSSEG          ;开始把010000h位置的数据拷贝到0h处
     mov ds, ax              ;注意这时bios的代码就会被冲掉，无法再使用int 10h
     xor ax, ax
@@ -26,7 +26,7 @@ ok_load:
     sub di, di
     cld                     ;df = 0 rep movsw是正向的
     rep movsw
-    mov ax, 0x7c0          ;重新恢复ds指向0x7c0
+    mov ax, 0x7c0           ;重新恢复ds指向0x7c0
     mov ds, ax
     lgdt [gdt_48]
     mov ax, 0x0001

@@ -36,14 +36,14 @@ start_up32:
     mov ax, timer_interrupt          ;这里应该是假设了timer_interrupt的地址是16位的
     mov dx, 0x8e00
     lea esi, [idt+64]
-    mov dword eax, [esi]
-    mov dword edx, [esi+4]
+    mov dword [esi], eax 
+    mov dword [esi+4], edx 
 
     mov ax, system_interrupt        ;这里也使用了0x0008作为段选择符
     mov dx, 0xef00                  ;ef是11101111陷阱门，用户的中断是可以被其他的中断打断的
     lea esi, [idt+0x80*8]
-    mov dword eax, [esi]
-    mov dword edx, [esi+4]
+    mov dword [esi], eax 
+    mov dword [esi+4], edx
 
     pushf
     and dword [esp], 0xffffbfff 
@@ -103,6 +103,7 @@ not_equ:
     pop gs
     ret
 
+align 4
 ignore_int:
     push ds
     push dword eax
@@ -127,6 +128,7 @@ timer_interrupt:
     je run0                 ;je: jump if equal
     mov dword [current], 1
     jmp dword TSS1_SEL:0
+    jmp over
 run0:
     mov dword [current], 0
     jmp dword TSS0_SEL:0
@@ -174,7 +176,7 @@ gdt:
     dw 0x68, tss0, 0xe900, 0x0
     dw 0x40, ldt0, 0xe200, 0x0
     dw 0x68, tss1, 0xe900, 0x0
-    dw 0x40, ldt0, 0xe200, 0x0
+    dw 0x40, ldt1, 0xe200, 0x0
 
 end_gdt:
 
@@ -208,13 +210,13 @@ ldt1:
     dq 0x00c0f200000003ff
 
 tss1:
-    dd 9
+    dd 0
     dd krn_stk1, 0x10
     dd 0, 0, 0, 0, 0
     dd task1, 0x200     ;0x200 eflags IF=1
     dd 0, 0, 0, 0
     dd usr_stk1, 0, 0, 0
-    dd 0x17, 0x17, 0x17, 0x17, 0x17
+    dd 0x17, 0x0f, 0x17, 0x17, 0x17, 0x17
     dd LDT1_SEL, 0x8000000
 
     times 128 dd 0

@@ -121,6 +121,14 @@ timer_interrupt:
     push dword eax
     mov dword eax, 0x10
     mov ds, ax          ;指向内核数据段
+    
+    ;在timer_interrupt开始的时候打印"T"
+    push dword eax
+    mov dword eax, 84 ;print "T"
+    call write_char
+    pop dword eax
+    ;打印"T"结束
+    
     mov byte al, 0x20
     out byte 0x20, al
     mov dword eax, 1

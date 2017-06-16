@@ -122,15 +122,28 @@ timer_interrupt:
     mov dword eax, 0x10
     mov ds, ax          ;指向内核数据段
     
-    ;在timer_interrupt开始的时候打印"T"
-    push dword eax
-    mov dword eax, 84 ;print "T"
-    call write_char
-    pop dword eax
-    ;打印"T"结束
-    
     mov byte al, 0x20
     out byte 0x20, al
+    
+    ;在timer_interrupt中判断被中断的代码是用户态还是内核态，
+    ;如果是用户态，打印U，内核态打印K
+    push dword eax
+    cmp word [esp+16], 0x0f
+    jne try_0x08
+    mov dword eax, 85 ;print "U" from user mode
+    jmp done
+try_0x08:
+    cmp word [esp+16], 0x08
+    jne unknown
+    mov dword eax, 75 ;print "K" from kernel
+    jmp done
+unknown:
+    mov dword eax, 84 ;print "T"
+done:
+    call write_char
+    pop dword eax
+    ;判断打印结束
+    
     mov dword eax, 1
     cmp dword eax, [current]
     je run0                 ;je: jump if equal
@@ -155,6 +168,9 @@ system_interrupt:
     mov dword edx, 0x10 ;指向内核数据段
     mov ds, dx
     call write_char
+    mov dword ecx, 0xfff
+sys_loop:                   ;这里增加一个循环，为了使在系统调用的时候更有可能被时钟中断
+    loop sys_loop
     pop dword eax
     pop dword ebx
     pop dword ecx

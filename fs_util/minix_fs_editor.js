@@ -1,5 +1,65 @@
+'use strict'
+
 const fs = require('fs');
 const program = require('commander');
+const block_size = 1024;
+
+function pair(a, b) {
+    return {a, b};
+}
+
+function FsMinix(buffer) {
+    this.buffer = buffer;
+    this.origin_buffer = new Buffer(buffer);
+    this.readBootBlock();
+    this.readSuperBlock();
+}
+
+FsMinix.prototype.readBootBlock = function() {
+    this.buffer = this.buffer.slice(block_size);
+}
+
+FsMinix.prototype.readSuperBlock = function() {
+    let block_left = block_size;
+    this.super_block_meta = [
+        pair('s_ninodes', 'short'),
+        pair('s_nzones', 'short'),
+        pair('s_imap_blocks', 'short'),
+        pair('s_zmap_blocks', 'short'),
+        pair('s_firstdatazone', 'short'),
+        pair('s_log_zone_size', 'short'),
+        pair('s_max_size', 'long'),
+        pair('s_magic', 'short')
+    ];
+    this.super_block = {};
+    this.super_block_meta.forEach((p) => {
+        let v = null;
+        if ('short' == p.b) {
+            v = this.buffer.readInt16LE();
+            this.buffer = this.buffer.slice(2);
+            block_left -= 2;
+        } else if ('long' == p.b) {
+            v = this.buffer.readInt32LE();
+            this.buffer = this.buffer.slice(4);
+            block_left -= 4;
+        }
+        if (!(null === v)) {
+            this.super_block[p.a] = v;
+        } else {
+            console.error('[warning] can\'t get v by key : ', p.a);
+        }
+    });
+}
+
+
+FsMinix.prototype.toString = function() {
+    let ret = '';
+    ret += `image size : ${this.origin_buffer.length}\n`;
+    ret += this.super_block_meta.map((p) => {
+        return `${p.a} : ${this.super_block[p.a]}`;
+    }).join('\n');
+    return ret;
+}
  
 function main() {
     program
@@ -9,9 +69,8 @@ function main() {
     if (program.image) {
         const image_name = program.image;
         fs.readFile(image_name, (err, data) => {
-            console.log('image size : ', data.length);
-
-
+            let fsm = new FsMinix(data);
+            console.log(fsm.toString());
         });
     }
 }

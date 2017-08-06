@@ -13,6 +13,8 @@ function FsMinix(buffer) {
     this.origin_buffer = new Buffer(buffer);
     this.readBootBlock();
     this.readSuperBlock();
+    this.readInodeBitMap();
+    this.readLogicBitMap();
 }
 
 FsMinix.prototype.readBootBlock = function() {
@@ -49,8 +51,25 @@ FsMinix.prototype.readSuperBlock = function() {
             console.error('[warning] can\'t get v by key : ', p.a);
         }
     });
+    console.log('block_left : ', block_left);
+    this.buffer = this.buffer.slice(block_left);
 }
 
+FsMinix.prototype.readInodeBitMap = function() {
+    this.inode_bitmap = this.buffer.slice(0, block_size);
+    this.buffer = this.buffer.slice(block_size);
+}
+
+FsMinix.prototype.getInodeStatus = function(index) {
+    const base = parseInt(index/8);
+    const offset = index % 8;
+    return !!((this.inode_bitmap.slice(base, base+1).readUInt8()) & (1 << offset));
+}
+
+FsMinix.prototype.readLogicBitMap = function() {
+    this.logic_bitmap = this.buffer.slice(0, block_size);
+    this.buffer = this.buffer.slice(block_size);
+}
 
 FsMinix.prototype.toString = function() {
     let ret = '';

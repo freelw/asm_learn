@@ -15,6 +15,7 @@ function FsMinix(buffer) {
     this.readSuperBlock();
     this.readInodeBitMap();
     this.readLogicBitMap();
+    this.readInodes();
 }
 
 FsMinix.prototype.readBootBlock = function() {
@@ -51,7 +52,6 @@ FsMinix.prototype.readSuperBlock = function() {
             console.error('[warning] can\'t get v by key : ', p.a);
         }
     });
-    console.log('block_left : ', block_left);
     this.buffer = this.buffer.slice(block_left);
 }
 
@@ -71,6 +71,19 @@ FsMinix.prototype.readLogicBitMap = function() {
     this.buffer = this.buffer.slice(block_size);
 }
 
+FsMinix.prototype.readInodes = function() {
+    const s_ninodes = this.super_block['s_ninodes'];
+    this.inodes_buffer = this.buffer.slice(0, 32*s_ninodes);
+    this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
+    this.buffer = this.buffer.slice(4*block_size);
+    this.inodes = [];
+    console.log('inodes_buffer.length : ', this.inodes_buffer.length);
+    console.log('s_ninodes : ', s_ninodes);
+    for (let i = 0; i < s_ninodes; ++ i) {
+        this.inodes.push(new Inode(this.inodes_buffer.slice(32*i, 32*i+32)));
+    }
+}
+
 FsMinix.prototype.toString = function() {
     let ret = '';
     ret += `image size : ${this.origin_buffer.length}\n`;
@@ -78,6 +91,25 @@ FsMinix.prototype.toString = function() {
         return `${p.a} : ${this.super_block[p.a]}`;
     }).join('\n');
     return ret;
+}
+
+function Inode(buffer) {
+
+    let offset = 0;
+    this.i_mode = buffer.readInt16LE(offset);
+    offset += 2;
+    this.i_uid = buffer.readInt16LE(offset);
+    offset += 2;
+    this.i_size = buffer.readInt32LE(offset);
+    offset += 4;
+    this.i_mtime = buffer.readInt32LE(offset);
+    offset += 4;
+    this.i_gid = buffer.readInt8();
+    offset += 1;
+    this.i_nlinks = buffer.readInt8();
+    offset += 1;
+
+    console.log('this.i_size : ', this.i_size);
 }
  
 function main() {

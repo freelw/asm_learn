@@ -80,7 +80,7 @@ FsMinix.prototype.readInodes = function() {
     console.log('inodes_buffer.length : ', this.inodes_buffer.length);
     console.log('s_ninodes : ', s_ninodes);
     for (let i = 0; i < s_ninodes; ++ i) {
-        this.inodes.push(new Inode(this.inodes_buffer.slice(32*i, 32*i+32)));
+        this.inodes.push(new Inode(this.inodes_buffer.slice(32*i, 32*i+32), this.getInodeStatus(i), i));
     }
 }
 
@@ -93,23 +93,38 @@ FsMinix.prototype.toString = function() {
     return ret;
 }
 
-function Inode(buffer) {
+function Inode(buffer, status, index) {
+    this.status = status;
+    this.index = index;
+    if (status) {        
+        let offset = 0;
+        this.i_mode = buffer.readInt16LE(offset);
+        offset += 2;
+        this.i_uid = buffer.readInt16LE(offset);
+        offset += 2;
+        this.i_size = buffer.readInt32LE(offset);
+        offset += 4;
+        this.i_mtime = buffer.readInt32LE(offset);
+        offset += 4;
+        this.i_gid = buffer.readInt8();
+        offset += 1;
+        this.i_nlinks = buffer.readInt8();
+        offset += 1;
+        console.log('this.i_size : ', this.i_size);
+        console.log('inode index : ', this.index);
+        this.getType();
+    }
+}
 
-    let offset = 0;
-    this.i_mode = buffer.readInt16LE(offset);
-    offset += 2;
-    this.i_uid = buffer.readInt16LE(offset);
-    offset += 2;
-    this.i_size = buffer.readInt32LE(offset);
-    offset += 4;
-    this.i_mtime = buffer.readInt32LE(offset);
-    offset += 4;
-    this.i_gid = buffer.readInt8();
-    offset += 1;
-    this.i_nlinks = buffer.readInt8();
-    offset += 1;
-
-    console.log('this.i_size : ', this.i_size);
+Inode.prototype.getType = function() {
+    const tmp = (this.i_mode >> 12) & 0xf;
+    if (8 == tmp) {
+        console.log('normal file');
+    } else if (4 == tmp){
+        console.log('dir file');
+    } else {
+        console.log('unknown type : ', tmp);
+    }
 }
  
 function main() {

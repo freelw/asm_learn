@@ -79,8 +79,9 @@ FsMinix.prototype.readInodes = function() {
     this.inodes = [];
     console.log('inodes_buffer.length : ', this.inodes_buffer.length);
     console.log('s_ninodes : ', s_ninodes);
-    for (let i = 0; i < s_ninodes; ++ i) {
-        this.inodes.push(new Inode(this.inodes_buffer.slice(32*i, 32*i+32), this.getInodeStatus(i), i));
+    for (let i = 1; i < s_ninodes; ++ i) {
+        const index = i-1;
+        this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i));
     }
 }
 
@@ -111,7 +112,6 @@ function Inode(buffer, status, index) {
         this.i_nlinks = buffer.readInt8();
         offset += 1;
         console.log('this.i_size : ', this.i_size);
-        console.log('inode index : ', this.index);
         this.getType();
     }
 }

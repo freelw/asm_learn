@@ -53,6 +53,11 @@ FsMinix.prototype.readSuperBlock = function() {
         }
     });
     this.buffer = this.buffer.slice(block_left);
+    if (this.super_block.s_firstdatazone) {
+        this.blocks_data = this.origin_buffer.slice(this.super_block.s_firstdatazone);
+    } else {
+        console.error('s_firstdatazone not exist');
+    }
 }
 
 FsMinix.prototype.readInodeBitMap = function() {
@@ -77,12 +82,15 @@ FsMinix.prototype.readInodes = function() {
     this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
     this.buffer = this.buffer.slice(4*block_size);
     this.inodes = [];
-    console.log('inodes_buffer.length : ', this.inodes_buffer.length);
-    console.log('s_ninodes : ', s_ninodes);
     for (let i = 1; i < s_ninodes; ++ i) {
         const index = i-1;
-        this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i));
+        this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i, this));
     }
+}
+
+FsMinix.prototype.getBlockData = function(index) {
+    const start = index * block_size;
+    return this.blocks_data.slice(start, start+block_size);
 }
 
 FsMinix.prototype.toString = function() {
@@ -94,9 +102,10 @@ FsMinix.prototype.toString = function() {
     return ret;
 }
 
-function Inode(buffer, status, index) {
+function Inode(buffer, status, index, fsm) {
     this.status = status;
     this.index = index;
+    this.fsm = fsm;
     if (status) {        
         let offset = 0;
         this.i_mode = buffer.readInt16LE(offset);
@@ -111,20 +120,83 @@ function Inode(buffer, status, index) {
         offset += 1;
         this.i_nlinks = buffer.readInt8();
         offset += 1;
-        console.log('this.i_size : ', this.i_size);
         this.getType();
+        this.i_zone = [];
+        for (let i = 0; i < 7; ++ i) {
+            const block_no = buffer.readInt16LE(offset);
+            offset += 2;
+            this.i_zone.push(block_no);
+        }
+        if (block_size * 7 < this.i_size) {
+            let left_size = this.i_size - block_size * 7;
+            const block_no = buffer.readInt16LE(offset);
+            offset += 2;
+            const buffer_zone7 = this.fsm.getBlockData(block_no);
+            for (let i = 0; i < 512; ++ i) {
+                this.i_zone.push(buffer_zone7.readInt16LE(i*2));
+                left_size -= block_size;
+                if (left_size <= 0) {
+                    break;
+                }
+            }
+        }
+        if (block_size * (7 + 512) < this.i_size) {
+            let left_size = this.i_size - block_size * (7 + 512);
+            const block_no = buffer.readInt16LE(offset);
+            offset += 2;
+            const buffer_zone8 = this.fsm.getBlockData(block_no);
+            for (let i = 0; i < 512; ++ i) {
+                const _block_no = buffer_zone8.readInt16LE(i*2);
+                const _zone = this.fsm.getBlockData(_block_no);
+                for (let j = 0; j < 512; ++ i) {
+                    this.i_zone.push(_zone.readInt16LE(j*2));
+                    left_size -= block_size;
+                    if (left_size <= 0) {
+                        break;
+                    }
+                }
+                if (left_size <= 0) {
+                    break;
+                }
+            }
+        }
+        this.getDataBuffer();
     }
 }
 
 Inode.prototype.getType = function() {
-    const tmp = (this.i_mode >> 12) & 0xf;
-    if (8 == tmp) {
-        console.log('normal file');
-    } else if (4 == tmp){
-        console.log('dir file');
+    this.inode_type = (this.i_mode >> 12) & 0xf;
+    if (8 == this.inode_type) {
+    } else if (4 == this.inode_type){
     } else {
         console.log('unknown type : ', tmp);
     }
+}
+
+Inode.prototype.getDataBuffer = function() {
+    this.data_buffer = new Buffer(0);
+    let left_size = this.i_size;
+    let cur_zone_index = 0;
+    while (left_size > 0) {
+        if (this.i_zone.length > cur_zone_index) {
+            const this_size = left_size > 1024 ? 1024 : left_size;
+            const block_data = this.fsm.getBlockData(this.i_zone[cur_zone_index]).slice(0, this_size);
+            this.data_buffer = Buffer.concat([this.data_buffer, block_data]);
+            left_size -= block_size;
+            ++ cur_zone_index;
+        }
+    }
+}
+
+function list_all_file(fsm) {
+    fsm.inodes.forEach((inode) => {
+        if (4 == inode.inode_type) {
+            console.log('dir entry length : ', inode.i_size);
+            console.log('dir data buffer length : ', inode.data_buffer.length);
+
+
+        }
+    });
 }
  
 function main() {
@@ -137,6 +209,7 @@ function main() {
         fs.readFile(image_name, (err, data) => {
             let fsm = new FsMinix(data);
             console.log(fsm.toString());
+            list_all_file(fsm);
         });
     }
 }

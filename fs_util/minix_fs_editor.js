@@ -53,11 +53,6 @@ FsMinix.prototype.readSuperBlock = function() {
         }
     });
     this.buffer = this.buffer.slice(block_left);
-    if (this.super_block.s_firstdatazone) {
-        this.blocks_data = this.origin_buffer.slice(this.super_block.s_firstdatazone);
-    } else {
-        console.error('s_firstdatazone not exist');
-    }
 }
 
 FsMinix.prototype.readInodeBitMap = function() {
@@ -90,7 +85,7 @@ FsMinix.prototype.readInodes = function() {
 
 FsMinix.prototype.getBlockData = function(index) {
     const start = index * block_size;
-    return this.blocks_data.slice(start, start+block_size);
+    return this.origin_buffer.slice(start, start+block_size);
 }
 
 FsMinix.prototype.toString = function() {
@@ -161,13 +156,16 @@ function Inode(buffer, status, index, fsm) {
             }
         }
         this.getDataBuffer();
+        this.getListOfDirFile();
     }
 }
 
 Inode.prototype.getType = function() {
     this.inode_type = (this.i_mode >> 12) & 0xf;
     if (8 == this.inode_type) {
+        //file
     } else if (4 == this.inode_type){
+        //directory
     } else {
         console.log('unknown type : ', tmp);
     }
@@ -188,13 +186,27 @@ Inode.prototype.getDataBuffer = function() {
     }
 }
 
-function list_all_file(fsm) {
+Inode.prototype.getListOfDirFile = function() {
+    if (4 == this.inode_type) { //is directory
+        this.file_list = [];
+        for (let i = 0; i < this.data_buffer.length / 16; ++ i) {
+            const start = i*16;
+            this.file_list.push(new DirEntry(this.data_buffer.slice(start, start+16)));
+        }
+    }
+}
+
+function DirEntry(buffer) {
+    this.inode = buffer.readInt16LE(buffer);
+    this.name = buffer.slice(2, 16).toString();
+}
+
+function listAllFile(fsm) {
     fsm.inodes.forEach((inode) => {
         if (4 == inode.inode_type) {
-            console.log('dir entry length : ', inode.i_size);
-            console.log('dir data buffer length : ', inode.data_buffer.length);
-
-
+            inode.file_list.forEach((dir_entry) => {
+                console.log(`${dir_entry.inode}|${dir_entry.name}`);
+            })
         }
     });
 }
@@ -209,7 +221,7 @@ function main() {
         fs.readFile(image_name, (err, data) => {
             let fsm = new FsMinix(data);
             console.log(fsm.toString());
-            list_all_file(fsm);
+            listAllFile(fsm);
         });
     }
 }

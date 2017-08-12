@@ -177,7 +177,7 @@ Inode.prototype.getDataBuffer = function() {
     let cur_zone_index = 0;
     while (left_size > 0) {
         if (this.i_zone.length > cur_zone_index) {
-            const this_size = left_size > 1024 ? 1024 : left_size;
+            const this_size = left_size > block_size ? block_size : left_size;
             const block_data = this.fsm.getBlockData(this.i_zone[cur_zone_index]).slice(0, this_size);
             this.data_buffer = Buffer.concat([this.data_buffer, block_data]);
             left_size -= block_size;

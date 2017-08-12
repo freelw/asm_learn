@@ -76,7 +76,7 @@ FsMinix.prototype.readInodes = function() {
     this.inodes_buffer = this.buffer.slice(0, 32*s_ninodes);
     this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
     this.buffer = this.buffer.slice(4*block_size);
-    this.inodes = [];
+    this.inodes = [new Inode(new Buffer(32), true, 0, this)];
     for (let i = 1; i < s_ninodes; ++ i) {
         const index = i-1;
         this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i, this));
@@ -167,7 +167,7 @@ Inode.prototype.getType = function() {
     } else if (4 == this.inode_type){
         //directory
     } else {
-        console.log('unknown type : ', tmp);
+        console.log('unknown type : ', this.inode_type);
     }
 }
 
@@ -206,9 +206,26 @@ function listAllFile(fsm) {
         if (4 == inode.inode_type) {
             inode.file_list.forEach((dir_entry) => {
                 console.log(`${dir_entry.inode}|${dir_entry.name}`);
-            })
+            });
         }
     });
+}
+
+function dfs(cur_inode, path, fsm) {
+    console.log(path.join('/'));
+    if (4 == cur_inode.inode_type) {
+        for (let i = 2; i < cur_inode.file_list.length; ++ i) {
+            const _node = cur_inode.file_list[i];
+            const son_inode_index = _node.inode;
+            const name = _node.name;
+            const son_inode = fsm.inodes[son_inode_index];
+            dfs(son_inode, path.concat([name]), fsm);
+        }    
+    } else if (8 == cur_inode.inode_type) {
+        // file
+    } else {
+        console.error('unknown type');
+    }
 }
  
 function main() {
@@ -222,6 +239,7 @@ function main() {
             let fsm = new FsMinix(data);
             console.log(fsm.toString());
             listAllFile(fsm);
+            dfs(fsm.inodes[1], [''], fsm);
         });
     }
 }

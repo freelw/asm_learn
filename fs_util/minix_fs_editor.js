@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const program = require('commander');
+const mkdirp = require('mkdirp');
 const block_size = 1024;
 
 function pair(a, b) {
@@ -80,6 +81,29 @@ FsMinix.prototype.readInodes = function() {
     for (let i = 1; i < s_ninodes; ++ i) {
         const index = i-1;
         this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i, this));
+    }
+
+    this.initInodesFullPath();
+}
+
+FsMinix.prototype.initInodesFullPath = function() {
+    dfs(this.inodes[1], [''], this);
+}
+
+function dfs(cur_inode, path, fsm) {
+    cur_inode.full_path = path.join('/');
+    if (4 == cur_inode.inode_type) {
+        for (let i = 2; i < cur_inode.file_list.length; ++ i) {
+            const _node = cur_inode.file_list[i];
+            const son_inode_index = _node.inode;
+            const name = _node.name;
+            const son_inode = fsm.inodes[son_inode_index];
+            dfs(son_inode, path.concat([name]), fsm);
+        }    
+    } else if (8 == cur_inode.inode_type) {
+        // file
+    } else {
+        console.error('unknown type');
     }
 }
 
@@ -202,44 +226,80 @@ function DirEntry(buffer) {
 }
 
 function listAllFile(fsm) {
-    fsm.inodes.forEach((inode) => {
-        if (4 == inode.inode_type) {
-            inode.file_list.forEach((dir_entry) => {
-                console.log(`${dir_entry.inode}|${dir_entry.name}`);
-            });
-        }
-    });
+    fsm.inodes
+        .filter((inode) => { return inode.status; })
+        .forEach((inode) => {
+            console.log([inode.inode_type, inode.full_path].join('|'));
+        });
 }
 
-function dfs(cur_inode, path, fsm) {
-    console.log(path.join('/'));
-    if (4 == cur_inode.inode_type) {
-        for (let i = 2; i < cur_inode.file_list.length; ++ i) {
-            const _node = cur_inode.file_list[i];
-            const son_inode_index = _node.inode;
-            const name = _node.name;
-            const son_inode = fsm.inodes[son_inode_index];
-            dfs(son_inode, path.concat([name]), fsm);
-        }    
-    } else if (8 == cur_inode.inode_type) {
-        // file
-    } else {
-        console.error('unknown type');
+function mkdirs(fsm, dir) {
+    return Promise.all(
+        fsm.inodes
+            .filter((inode) => { return inode.status && 4 == inode.inode_type; })
+            .map((inode) => {
+                //console.log([inode.inode_type, inode.full_path].join('|'));
+
+                return new Promise((resolve, reject) => {
+                    const _dir = dir + '/' + inode.full_path;
+                    mkdirp(_dir, (err) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    });
+                });
+            })
+    );
+}
+
+function writeFile(fsm, dir) {
+    return () => {
+        return Promise.all(
+            fsm.inodes
+                .filter((inode) => { return inode.status && 8 == inode.inode_type; })
+                .map((inode) => {
+                    return new Promise((resolve, reject) => {
+                        const path = dir + '/' + inode.full_path;
+                        fs.writeFile(path, inode.data_buffer, (err) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve();
+                            }
+                        });
+                    })
+                })
+        );
     }
+}
+
+function release(fsm, dir) {
+    mkdirs(fsm, dir)
+        .then(writeFile(fsm, dir))
+        .catch((err) => {
+            console.error('release error : ', err);
+        });
 }
  
 function main() {
     program
         .version('0.0.1')
         .option('-i, --image [value]', 'select minix fs image')
+        .option('-d, --dir [value]', 'select release dir')
         .parse(process.argv);
     if (program.image) {
         const image_name = program.image;
         fs.readFile(image_name, (err, data) => {
             let fsm = new FsMinix(data);
             console.log(fsm.toString());
-            listAllFile(fsm);
-            dfs(fsm.inodes[1], [''], fsm);
+            //listAllFile(fsm);
+            if (program.dir) {
+                release(fsm, program.dir);
+            } else {
+                console.error('release dir not selected');
+            }
         });
     }
 }

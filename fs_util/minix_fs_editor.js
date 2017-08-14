@@ -222,7 +222,14 @@ Inode.prototype.getListOfDirFile = function() {
 
 function DirEntry(buffer) {
     this.inode = buffer.readInt16LE(buffer);
-    this.name = buffer.slice(2, 16).toString();
+    this.name = buffer
+        .slice(2, 16)
+        .toString()
+        .split('')
+        .filter((ch) => {
+            return ch != '\u0000';
+        })
+        .join('');
 }
 
 function listAllFile(fsm) {
@@ -238,10 +245,8 @@ function mkdirs(fsm, dir) {
         fsm.inodes
             .filter((inode) => { return inode.status && 4 == inode.inode_type; })
             .map((inode) => {
-                //console.log([inode.inode_type, inode.full_path].join('|'));
-
                 return new Promise((resolve, reject) => {
-                    const _dir = dir + '/' + inode.full_path;
+                    const _dir = dir + '/' + inode.full_path.slice(1);
                     mkdirp(_dir, (err) => {
                         if (err) {
                             reject(err);
@@ -294,7 +299,6 @@ function main() {
         fs.readFile(image_name, (err, data) => {
             let fsm = new FsMinix(data);
             console.log(fsm.toString());
-            //listAllFile(fsm);
             if (program.dir) {
                 release(fsm, program.dir);
             } else {

@@ -9,7 +9,7 @@ function pair(a, b) {
     return {a, b};
 }
 
-function FsMinix(buffer) {
+function FsMinixReader(buffer) {
     this.buffer = buffer;
     this.origin_buffer = new Buffer(buffer);
     this.readBootBlock();
@@ -19,11 +19,11 @@ function FsMinix(buffer) {
     this.readInodes();
 }
 
-FsMinix.prototype.readBootBlock = function() {
+FsMinixReader.prototype.readBootBlock = function() {
     this.buffer = this.buffer.slice(block_size);
 }
 
-FsMinix.prototype.readSuperBlock = function() {
+FsMinixReader.prototype.readSuperBlock = function() {
     let block_left = block_size;
     this.super_block_meta = [
         pair('s_ninodes', 'short'),
@@ -56,23 +56,23 @@ FsMinix.prototype.readSuperBlock = function() {
     this.buffer = this.buffer.slice(block_left);
 }
 
-FsMinix.prototype.readInodeBitMap = function() {
+FsMinixReader.prototype.readInodeBitMap = function() {
     this.inode_bitmap = this.buffer.slice(0, block_size);
     this.buffer = this.buffer.slice(block_size);
 }
 
-FsMinix.prototype.getInodeStatus = function(index) {
+FsMinixReader.prototype.getInodeStatus = function(index) {
     const base = parseInt(index/8);
     const offset = index % 8;
     return !!((this.inode_bitmap.slice(base, base+1).readUInt8()) & (1 << offset));
 }
 
-FsMinix.prototype.readLogicBitMap = function() {
+FsMinixReader.prototype.readLogicBitMap = function() {
     this.logic_bitmap = this.buffer.slice(0, block_size);
     this.buffer = this.buffer.slice(block_size);
 }
 
-FsMinix.prototype.readInodes = function() {
+FsMinixReader.prototype.readInodes = function() {
     const s_ninodes = this.super_block['s_ninodes'];
     this.inodes_buffer = this.buffer.slice(0, 32*s_ninodes);
     this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
@@ -86,7 +86,7 @@ FsMinix.prototype.readInodes = function() {
     this.initInodesFullPath();
 }
 
-FsMinix.prototype.initInodesFullPath = function() {
+FsMinixReader.prototype.initInodesFullPath = function() {
     dfs(this.inodes[1], [''], this);
 }
 
@@ -107,12 +107,12 @@ function dfs(cur_inode, path, fsm) {
     }
 }
 
-FsMinix.prototype.getBlockData = function(index) {
+FsMinixReader.prototype.getBlockData = function(index) {
     const start = index * block_size;
     return this.origin_buffer.slice(start, start+block_size);
 }
 
-FsMinix.prototype.toString = function() {
+FsMinixReader.prototype.toString = function() {
     let ret = '';
     ret += `image size : ${this.origin_buffer.length}\n`;
     ret += this.super_block_meta.map((p) => {
@@ -297,7 +297,7 @@ function main() {
     if (program.image) {
         const image_name = program.image;
         fs.readFile(image_name, (err, data) => {
-            let fsm = new FsMinix(data);
+            let fsm = new FsMinixReader(data);
             console.log(fsm.toString());
             if (program.dir) {
                 release(fsm, program.dir);

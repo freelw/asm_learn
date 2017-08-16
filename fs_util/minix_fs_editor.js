@@ -232,17 +232,9 @@ function DirEntry(buffer) {
         .join('');
 }
 
-function listAllFile(fsm) {
-    fsm.inodes
-        .filter((inode) => { return inode.status; })
-        .forEach((inode) => {
-            console.log([inode.inode_type, inode.full_path].join('|'));
-        });
-}
-
-function mkdirs(fsm, dir) {
+FsMinixReader.prototype.mkdirs = function(dir) {
     return Promise.all(
-        fsm.inodes
+        this.inodes
             .filter((inode) => { return inode.status && 4 == inode.inode_type; })
             .map((inode) => {
                 return new Promise((resolve, reject) => {
@@ -259,10 +251,10 @@ function mkdirs(fsm, dir) {
     );
 }
 
-function writeFile(fsm, dir) {
+FsMinixReader.prototype.writeFile = function(dir) {
     return () => {
         return Promise.all(
-            fsm.inodes
+            this.inodes
                 .filter((inode) => { return inode.status && 8 == inode.inode_type; })
                 .map((inode) => {
                     return new Promise((resolve, reject) => {
@@ -280,9 +272,9 @@ function writeFile(fsm, dir) {
     }
 }
 
-function release(fsm, dir) {
-    mkdirs(fsm, dir)
-        .then(writeFile(fsm, dir))
+FsMinixReader.prototype.release = function(dir) {
+    this.mkdirs(dir)
+        .then(this.writeFile(dir))
         .catch((err) => {
             console.error('release error : ', err);
         });
@@ -300,7 +292,7 @@ function main() {
             let fsm = new FsMinixReader(data);
             console.log(fsm.toString());
             if (program.dir) {
-                release(fsm, program.dir);
+                fsm.release(program.dir);
             } else {
                 console.error('release dir not selected');
             }

@@ -67,7 +67,6 @@ FsMinixWriter.prototype.getBuffer = function() {
 FsMinixWriter.prototype.getInodes = function() {
     this.inodes = [];
     const root_inode = new Inode(this.dir, Inode.getNewIndex());
-    root_inode.i_nlinks = 0;
     this.insertInode(root_inode);
     dfs(root_inode, this);
     this.inodes.forEach((inode) => {
@@ -87,6 +86,7 @@ function dfs(root_inode, fsw) {
         fsw.insertInode(inode);
         if (inode.isDir()) {
             dfs(inode, fsw);
+            root_inode.i_nlinks ++;
         }
     });
 }

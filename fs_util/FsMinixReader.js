@@ -202,6 +202,10 @@ Inode.prototype.getType = function() {
     }
 }
 
+Inode.prototype.isDir = function() {
+    return 4 == this.inode_type;
+}
+
 Inode.prototype.getDataBuffer = function() {
     this.data_buffer = zero_buffer(0);
     let left_size = this.i_size;
@@ -225,6 +229,16 @@ Inode.prototype.getListOfDirFile = function() {
             this.file_list.push(new DirEntry(this.data_buffer.slice(start, start+16)));
         }
     }
+}
+
+Inode.prototype.display = function() {
+    console.log('----inode display begin----');
+    console.log('index : ', this.index);
+    console.log('i_size : ', this.i_size);
+    console.log('isDir : ', this.isDir());
+    console.log('inode_type : ', this.inode_type);
+    console.log('this.i_nlinks : ', this.i_nlinks);
+    console.log('-----inode display end-----');
 }
 
 function DirEntry(buffer) {

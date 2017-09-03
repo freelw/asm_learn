@@ -20,6 +20,11 @@ function main() {
                     console.error('readFile error : ', err);
                 } else {
                     let fsmReader = new FsMinixReader(data);
+                    fsmReader.inodes.filter((inode) => {
+                        return fsmReader.getInodeStatus(inode.index);
+                    }).forEach((inode) => {
+                        inode.display();
+                    });
                     console.log(fsmReader.toString());
                     fsmReader.release(program.dir);
                 }
@@ -30,7 +35,6 @@ function main() {
     } else if (program.out) {
         const image_name = program.out;
         if (program.dir) {
-            console.log('dir : ', program.dir);
             let fsmWriter = new FsMinixWriter(program.dir);
             /*fs.writeFile(image_name, fsmWriter.getBuffer(), (err) => {
                 if (err) {

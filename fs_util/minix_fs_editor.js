@@ -10,15 +10,19 @@ function main() {
         .version('0.0.1')
         .option('-i, --image [value]', 'select minix fs image')
         .option('-d, --dir [value]', 'select release/compress dir')
-        .option('-o, --output [value]', 'output image path')
+        .option('-o, --out [value]', 'output image path')
         .parse(process.argv);
     if (program.image) {
         const image_name = program.image;
         if (program.dir) {
-            fs.readFile(image_name, (err, data) => {        
-                let fsmReader = new FsMinixReader(data);
-                console.log(fsmReader.toString());
-                fsmReader.release(program.dir);
+            fs.readFile(image_name, (err, data) => {
+                if (err) {
+                    console.error('readFile error : ', err);
+                } else {
+                    let fsmReader = new FsMinixReader(data);
+                    console.log(fsmReader.toString());
+                    fsmReader.release(program.dir);
+                }
             });
         } else {
             console.error('release dir not selected');
@@ -26,12 +30,13 @@ function main() {
     } else if (program.out) {
         const image_name = program.out;
         if (program.dir) {
-            let fsmWriter = new FsMinixWriter(dir);
-            fs.writeFile(image_name, fsmWriter.getBuffer(), (err) => {
+            console.log('dir : ', program.dir);
+            let fsmWriter = new FsMinixWriter(program.dir);
+            /*fs.writeFile(image_name, fsmWriter.getBuffer(), (err) => {
                 if (err) {
                     console.error('writeFile error :', err);
                 }
-            });
+            });*/
         } else {
             console.error('compress dir not selected');
         }

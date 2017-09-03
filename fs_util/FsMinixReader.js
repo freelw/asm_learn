@@ -4,6 +4,14 @@ const fs = require('fs');
 const mkdirp = require('mkdirp');
 const block_size = 1024;
 
+function zero_buffer(size) {
+    let ret = new Buffer(size);
+    for (let i = 0; i < size; ++ i) {
+        ret[i] = 0;
+    }
+    return ret;
+}
+
 function pair(a, b) {
     return {a, b};
 }
@@ -76,7 +84,7 @@ FsMinixReader.prototype.readInodes = function() {
     this.inodes_buffer = this.buffer.slice(0, 32*s_ninodes);
     this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
     this.buffer = this.buffer.slice(4*block_size);
-    this.inodes = [new Inode(new Buffer(32), true, 0, this)];
+    this.inodes = [new Inode(zero_buffer(32), true, 0, this)];
     for (let i = 1; i < s_ninodes; ++ i) {
         const index = i-1;
         this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i, this));
@@ -124,7 +132,7 @@ function Inode(buffer, status, index, fsm) {
     this.status = status;
     this.index = index;
     this.fsm = fsm;
-    if (status) {        
+    if (status) {
         let offset = 0;
         this.i_mode = buffer.readInt16LE(offset);
         offset += 2;
@@ -134,9 +142,9 @@ function Inode(buffer, status, index, fsm) {
         offset += 4;
         this.i_mtime = buffer.readInt32LE(offset);
         offset += 4;
-        this.i_gid = buffer.readInt8();
+        this.i_gid = buffer.readInt8(offset);
         offset += 1;
-        this.i_nlinks = buffer.readInt8();
+        this.i_nlinks = buffer.readInt8(offset);
         offset += 1;
         this.getType();
         this.i_zone = [];
@@ -195,7 +203,7 @@ Inode.prototype.getType = function() {
 }
 
 Inode.prototype.getDataBuffer = function() {
-    this.data_buffer = new Buffer(0);
+    this.data_buffer = zero_buffer(0);
     let left_size = this.i_size;
     let cur_zone_index = 0;
     while (left_size > 0) {

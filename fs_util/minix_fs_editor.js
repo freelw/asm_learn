@@ -36,11 +36,11 @@ function main() {
         const image_name = program.out;
         if (program.dir) {
             let fsmWriter = new FsMinixWriter(program.dir);
-            /*fs.writeFile(image_name, fsmWriter.getBuffer(), (err) => {
+            fs.writeFile(image_name, fsmWriter.getBuffer(), (err) => {
                 if (err) {
                     console.error('writeFile error :', err);
                 }
-            });*/
+            });
         } else {
             console.error('compress dir not selected');
         }

@@ -68,10 +68,12 @@ FsMinixReader.prototype.readInodeBitMap = function() {
     this.buffer = this.buffer.slice(block_size);
 }
 
+//inode bitmap 具体排布顺序见《linux 内核完全剖析》P603
 FsMinixReader.prototype.getInodeStatus = function(index) {
-    const base = parseInt(index/8);
+    const base = parseInt(index / 8);
     const offset = index % 8;
-    return !!((this.inode_bitmap.slice(base, base+1).readUInt8()) & (1 << offset));
+    const u8 = this.inode_bitmap.slice(base, base+1).readUInt8();
+    return !!(u8 & (1 << offset));
 }
 
 FsMinixReader.prototype.readLogicBitMap = function() {
@@ -81,7 +83,7 @@ FsMinixReader.prototype.readLogicBitMap = function() {
 
 FsMinixReader.prototype.readInodes = function() {
     const s_ninodes = this.super_block['s_ninodes'];
-    this.inodes_buffer = this.buffer.slice(0, 32*s_ninodes);
+    this.inodes_buffer = this.buffer.slice(0, 32*(s_ninodes-1));
     this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
     this.buffer = this.buffer.slice(4*block_size);
     this.inodes = [new Inode(zero_buffer(32), true, 0, this)];

@@ -64,8 +64,9 @@ FsMinixReader.prototype.readSuperBlock = function() {
 }
 
 FsMinixReader.prototype.readInodeBitMap = function() {
-    this.inode_bitmap = this.buffer.slice(0, block_size);
-    this.buffer = this.buffer.slice(block_size);
+    const s_imap_block_size = block_size * this.super_block.s_imap_blocks;
+    this.inode_bitmap = this.buffer.slice(0, s_imap_block_size);
+    this.buffer = this.buffer.slice(s_imap_block_size);
 }
 
 //inode bitmap 具体排布顺序见《linux 内核完全剖析》P603
@@ -77,26 +78,31 @@ FsMinixReader.prototype.getInodeStatus = function(index) {
 }
 
 FsMinixReader.prototype.readLogicBitMap = function() {
-    this.logic_bitmap = this.buffer.slice(0, block_size);
-    this.buffer = this.buffer.slice(block_size);
+    const s_zmap_block_size = block_size * this.super_block.s_zmap_blocks;
+    this.logic_bitmap = this.buffer.slice(0, s_zmap_block_size);
+    this.buffer = this.buffer.slice(s_zmap_block_size);
 }
 
 FsMinixReader.prototype.readInodes = function() {
     const s_ninodes = this.super_block['s_ninodes'];
-    this.inodes_buffer = this.buffer.slice(0, 32*(s_ninodes-1));
+    this.inodes_buffer = this.buffer.slice(0, 32*s_ninodes);
     this.origin_inodes_buffer = new Buffer(this.inodes_buffer);
+    const f_s_inodemap_blocks = s_ninodes/32;
+    let s_inodemap_blocks = parseInt(f_s_inodemap_blocks, 10);
+    //如果没有整除，则还需要一块
+    if (f_s_inodemap_blocks > s_inodemap_blocks) {
+        s_inodemap_blocks += 1;
+    } 
     this.buffer = this.buffer.slice(4*block_size);
-    this.inodes = [new Inode(zero_buffer(32), true, 0, this)];
-    for (let i = 1; i < s_ninodes; ++ i) {
-        const index = i-1;
-        this.inodes.push(new Inode(this.inodes_buffer.slice(32*index, 32*index+32), this.getInodeStatus(i), i, this));
+    this.inodes = [];
+    for (let i = 0; i < s_ninodes; ++ i) {
+        this.inodes.push(new Inode(this.inodes_buffer.slice(32*i, 32*i+32), this.getInodeStatus(i+1), i, this));
     }
-
     this.initInodesFullPath();
 }
 
 FsMinixReader.prototype.initInodesFullPath = function() {
-    dfs(this.inodes[1], [''], this);
+    dfs(this.inodes[0], [''], this);
 }
 
 function dfs(cur_inode, path, fsm) {
@@ -106,7 +112,7 @@ function dfs(cur_inode, path, fsm) {
             const _node = cur_inode.file_list[i];
             const son_inode_index = _node.inode;
             const name = _node.name;
-            const son_inode = fsm.inodes[son_inode_index];
+            const son_inode = fsm.inodes[son_inode_index-1];
             dfs(son_inode, path.concat([name]), fsm);
         }    
     } else if (8 == cur_inode.inode_type) {
@@ -176,7 +182,7 @@ function Inode(buffer, status, index, fsm) {
             for (let i = 0; i < 512; ++ i) {
                 const _block_no = buffer_zone8.readInt16LE(i*2);
                 const _zone = this.fsm.getBlockData(_block_no);
-                for (let j = 0; j < 512; ++ i) {
+                for (let j = 0; j < 512; ++ j) {
                     this.i_zone.push(_zone.readInt16LE(j*2));
                     left_size -= block_size;
                     if (left_size <= 0) {

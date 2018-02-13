@@ -21,7 +21,8 @@ function main() {
                 } else {
                     let fsmReader = new FsMinixReader(data);
                     fsmReader.inodes.filter((inode) => {
-                        return fsmReader.getInodeStatus(inode.index);
+                        //return fsmReader.getInodeStatus(inode.index+1);
+                        return inode.status;
                     }).forEach((inode) => {
                         inode.display();
                     });

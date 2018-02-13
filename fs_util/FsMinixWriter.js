@@ -69,6 +69,9 @@ FsMinixWriter.prototype.initLogZoneBitMap = function() {
     for (let i = 0; i < this.super_block.s_nzones - this.super_block.s_firstdatazone; ++ i) {
         this.log_zones.push(zero_buffer(block_size));
     }
+    for (let i = this.super_block.s_nzones - this.super_block.s_firstdatazone + 1; i < 8192*this.super_block.s_zmap_blocks; ++ i) {
+        this.setLogZoneStatus(i);    
+    }
     this.setLogZoneStatus(0);
 }
 
@@ -110,7 +113,7 @@ FsMinixWriter.prototype.getInodes = function() {
     this.inodes = [];
     const index = Inode.getNewIndex();
     const root_inode = new Inode(this.dir, index, index, this);
-    this.insertInode(root_inode);
+    //this.insertInode(root_inode);
     dfs(root_inode, this);
     this.inodes.forEach((inode) => {
         inode.display();
@@ -119,6 +122,9 @@ FsMinixWriter.prototype.getInodes = function() {
 
 FsMinixWriter.prototype.initInodeBitMap = function() {
     this.inode_bitmap = zero_buffer(block_size * this.super_block.s_imap_blocks);
+    for (let i = this.super_block.s_ninodes; i < 8192*this.super_block.s_imap_blocks; ++ i) {
+        this.setInodeStatus(i);
+    }
     for (let i = 0; i <= this.inodes.length; ++ i) {
         this.setInodeStatus(i);
     }
@@ -142,7 +148,9 @@ FsMinixWriter.prototype.joinBuffer = function() {
     offset += this.inode_bitmap.length;
     this.log_zone_bitmap.copy(this.buffer, offset);
     offset += this.log_zone_bitmap.length;
+    this.inodes.sort((a, b) => { return a.index - b.index});
     for (let i = 0; i < this.inodes.length; ++ i) {
+        console.log('this.inodes[i].index : ', this.inodes[i].index);
         const inode_buffer = this.inodes[i].getMetaBuffer();
         inode_buffer.copy(this.buffer, offset);
         offset += inode_buffer.length;
@@ -151,18 +159,7 @@ FsMinixWriter.prototype.joinBuffer = function() {
     for (let i = 0; i < this.log_zones.length; ++ i) {
         const log_zone_buffer = this.log_zones[i];
         log_zone_buffer.copy(this.buffer, offset);
-        if (0 == i) {
-            console.log('log_zone_buffer : ', log_zone_buffer.slice(34, 48).toString());
-            console.log('this.buffer : ', this.buffer.slice(offset+34, offset+48).toString());
-        }
         offset += log_zone_buffer.length;
-    }
-    console.log('After join buffer offset : ', offset);
-    const right_size = this.super_block.s_nzones * block_size;
-    if (right_size == offset) {
-        console.log('offset equal this.super_block.s_nzones * block_size');
-    } else {
-        console.log('offset is different from this.super_block.s_nzones * block_size : ', right_size);
     }
 }
 
@@ -172,9 +169,8 @@ function dfs(root_inode, fsm) {
     });
     files.forEach((file) => {
         const file_name = root_inode.file_name + '/' + file.file_name;
-        console.log('dfs file_name : ', file_name);
         const inode = new Inode(file_name, file.index, root_inode.index, fsm);
-        fsm.insertInode(inode);
+        //fsm.insertInode(inode);
         if (inode.isDir()) {
             dfs(inode, fsm);
             root_inode.i_nlinks ++;
@@ -183,13 +179,13 @@ function dfs(root_inode, fsm) {
 }
 
 function Inode(file_name, index, root_index, fsm) {
+    fsm.insertInode(this);
     this.file_name = file_name;
     this.index = index;
     this.fsm = fsm;
     this.i_mode = 511; //0777
     this.inode_type = fs.statSync(this.file_name).isDirectory() ? 4 : 8;
     this.i_mode |= this.inode_type << 12;
-    console.log('this.i_mode : ', this.i_mode);
     this.i_uid = 0;
     this.i_mtime = 0;
     this.i_gid = 0;
@@ -210,18 +206,17 @@ function Inode(file_name, index, root_index, fsm) {
             } else {
                 index = Inode.getNewIndex();
             }
-            console.log('index : ', index);
-            console.log('this.index : ', this.index);
-            console.log('root_index : ', root_index);
-            console.log('offset : ', offset);
             this.buffer.writeInt16LE(index, offset);
             offset += 2;
             file_name = file_name.slice(0, 14);
+            console.log('index : ', index);
             console.log('file_name : ', file_name);
             this.buffer.write(file_name, offset);
             offset += 14;
         });
     } else {
+        console.log('this.index : ', this.index);
+        console.log('this.file_name : ', this.file_name);
         this.buffer = fs.readFileSync(this.file_name);
         this.i_size = this.buffer.length;
     }
@@ -272,19 +267,12 @@ Inode.prototype.saveIZone = function() {
             throw Error("saveIZone Failed, no log zone");
         }
         let ready2copy = t_buffer.slice(0, block_size);
-        if (4 == this.inode_type) {
-            console.log('ready2copy : ', ready2copy.slice(2, 16).toString());
-            console.log('ready2copy : ', ready2copy.slice(18, 32).toString());
-            console.log('ready2copy : ', ready2copy.slice(34, 48).toString());
-        }
         ready2copy.copy(buffer);
         flat_i_zone.push({index, buffer});
         t_buffer = t_buffer.slice(block_size);
     }
 
     for (let i = 0; i < Math.min(flat_i_zone.length, 7); ++ i) {
-        console.log('flat_i_zone[i].index : ', flat_i_zone[i].index);
-        console.log('flat_i_zone[i].buffer.length : ', flat_i_zone[i].buffer.length);
         this.i_zone[i] = flat_i_zone[i].index;
     }
 
@@ -357,6 +345,7 @@ Inode.prototype.getMetaBuffer = function() {
 }
 
 Inode.prototype.display = function() {
+    /*
     console.log('----inode display begin----');
     console.log('index : ', this.index);
     console.log('file_name : ', this.file_name);
@@ -364,6 +353,7 @@ Inode.prototype.display = function() {
     console.log('isDir : ', this.isDir());
     console.log('this.i_nlinks : ', this.i_nlinks);
     console.log('-----inode display end-----');
+    */
 }
 
 Inode.getNewIndex = function() {

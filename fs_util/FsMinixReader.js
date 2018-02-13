@@ -95,8 +95,8 @@ FsMinixReader.prototype.readInodes = function() {
     } 
     this.buffer = this.buffer.slice(4*block_size);
     this.inodes = [];
-    for (let i = 0; i < s_ninodes; ++ i) {
-        this.inodes.push(new Inode(this.inodes_buffer.slice(32*i, 32*i+32), this.getInodeStatus(i+1), i, this));
+    for (let i = 1; i < s_ninodes; ++ i) {
+        this.inodes.push(new Inode(this.inodes_buffer.slice(32*(i-1), 32*i), this.getInodeStatus(i), i, this));
     }
     this.initInodesFullPath();
 }

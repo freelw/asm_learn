@@ -244,6 +244,8 @@ Inode.prototype.getListOfDirFile = function() {
 Inode.prototype.display = function() {
     console.log('----inode display begin----');
     console.log('index : ', this.index);
+    console.log('i_gid : ', this.i_gid);
+    console.log('i_uid : ', this.i_uid);
     console.log('i_size : ', this.i_size);
     console.log('isDir : ', this.isDir());
     console.log('inode_type : ', this.inode_type);

@@ -107,7 +107,6 @@ FsMinixReader.prototype.initInodesFullPath = function() {
 
 function dfs(cur_inode, path, fsm) {
     cur_inode.full_path = path.join('/');
-    console.log('cur_inode.full_path : ', cur_inode.full_path);
     if (4 == cur_inode.inode_type) {
         for (let i = 2; i < cur_inode.file_list.length; ++ i) {
             const _node = cur_inode.file_list[i];
@@ -270,7 +269,6 @@ FsMinixReader.prototype.mkdirs = function(dir) {
             .map((inode) => {
                 return new Promise((resolve, reject) => {
                     const _dir = dir + '/' + inode.full_path.slice(1);
-                    console.log('making dir : ', _dir);
                     mkdirp(_dir, (err) => {
                         if (err) {
                             reject(err);
@@ -291,10 +289,6 @@ FsMinixReader.prototype.writeFile = function(dir) {
                 .map((inode) => {
                     return new Promise((resolve, reject) => {
                         const path = dir + '/' + inode.full_path;
-                        console.log('inode.i_zone[0] : ', inode.i_zone[0]);
-                        console.log('inode.index : ', inode.index);
-                        console.log('writing file : ', path);
-                        console.log('inode.data_buffer : ', inode.data_buffer.toString());
                         fs.writeFile(path, inode.data_buffer, (err) => {
                             if (err) {
                                 reject(err);

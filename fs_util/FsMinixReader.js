@@ -106,19 +106,21 @@ FsMinixReader.prototype.initInodesFullPath = function() {
 }
 
 function dfs(cur_inode, path, fsm) {
-    cur_inode.full_path = path.join('/');
-    if (4 == cur_inode.inode_type) {
-        for (let i = 2; i < cur_inode.file_list.length; ++ i) {
-            const _node = cur_inode.file_list[i];
-            const son_inode_index = _node.inode;
-            const name = _node.name;
-            const son_inode = fsm.inodes[son_inode_index-1];
-            dfs(son_inode, path.concat([name]), fsm);
-        }    
-    } else if (8 == cur_inode.inode_type) {
-        // file
-    } else {
-        console.error('unknown type');
+    if (cur_inode) {
+        cur_inode.full_path = path.join('/');
+        if (4 == cur_inode.inode_type) {
+            for (let i = 2; i < cur_inode.file_list.length; ++ i) {
+                const _node = cur_inode.file_list[i];
+                const son_inode_index = _node.inode;
+                const name = _node.name;
+                const son_inode = fsm.inodes[son_inode_index-1];
+                dfs(son_inode, path.concat([name]), fsm);
+            }    
+        } else if (8 == cur_inode.inode_type) {
+            // file
+        } else {
+            console.error('unknown type');
+        }
     }
 }
 

@@ -53,7 +53,7 @@ start_up32:
     mov dword eax, LDT0_SEL
     lldt ax
     mov  dword [current], 0
-    sti                             ;开终端，到第一个ret之后才会生效，防止在iret之前被打断，参见intel ia32文档sti指令的描述
+    sti                             ;开中断，到第一个ret之后才会生效，防止在iret之前被打断，参见intel ia32文档sti指令的描述
 
     ;从这里开始构造栈，准备iret到特权级3
     ;iret会弹出5个参数，eip ecs eflags 原esp 原ss，所以这里反过来构造

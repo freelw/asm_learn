@@ -1,6 +1,6 @@
 #!/bin/bash
 rm a.img
-NASM="/Users/liwang/project/nasm-2.14.03rc2/nasm"
+NASM="./nasm-2.14.03rc2/nasm"
 ${NASM} -o loader.bin loader.asm -l loader.lst
 ${NASM} -o boot.bin boot.asm -l boot.lst
 dd if=loader.bin of=a.img bs=512 count=1 conv=notrunc
